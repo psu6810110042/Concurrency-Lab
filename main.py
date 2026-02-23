@@ -2,33 +2,56 @@ import subprocess
 import platform
 import time
 import socket
+import ipaddress
 
 # using threads
 from concurrent.futures import ThreadPoolExecutor
 
 
 TARGET_PORT = 22
-TIMEOUT = 0.2
+TIMEOUT = 2
 
-BASE_IP = "172.31.204."
-# scan ips from 1-254
-ips_to_scan = [f"{BASE_IP}{i}" for i in range(1, 255)]
 online_ips = []
+
+networks_to_scan = [
+    "172.30.81.0/24",
+    "192.168.65.0/24",
+]
+
+ips_to_scan = []
+
+for net_string in networks_to_scan:
+    network = ipaddress.IPv4Network(net_string, strict=False)
+
+    for ip in network.hosts():
+        ips_to_scan.append(str(ip))
+
+print(f"Total IPs queued for scanning: {len(ips_to_scan)}")
 
 
 # function for pinging devices
 def ping_ip(ip):
     # -n for windows -c for linux and other os
     param = "-n" if platform.system().lower() == "windows" else "-c"
-    command = ["ping", param, "1", ip]
+    command = [
+        "ping",
+        param,
+        "1",
+        "-w",
+        "1000",
+        ip,
+    ]
 
     try:
         result = subprocess.run(
-            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=1
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=TIMEOUT,
+            text=True,
         )
 
-        # returns 0 for success
-        if result.returncode == 0:
+        if "TTL=" in result.stdout.upper():
             online_ips.append(ip)
             return f"[+] ONLINE: {ip}"
         else:
@@ -95,6 +118,22 @@ def run_sequential_scan(ips):
     print(f"Sequential Scan took: {end_time - start_time:.2f} seconds")
 
 
+def run_threaded_scan(ips):
+    print("\n--- Starting Threaded Scan ---")
+    start_time = time.perf_counter()
+
+    # 100 threads
+    with ThreadPoolExecutor(max_workers=100) as executor:
+        results = executor.map(scan_ip, ips)
+
+        for result in results:
+            if result:
+                print(result)
+
+    end_time = time.perf_counter()
+    print(f"Threaded Scan took: {end_time - start_time:.2f} seconds")
+
+
 if __name__ == "__main__":
     # --- TESTING FOR KNOWN IPS ---
 
@@ -106,13 +145,13 @@ if __name__ == "__main__":
     # testing vm (ssh is open) to see if the function works
     # print(scan_ip("192.168.65.133"))
 
-
     # --- PINGING TO GET IPS ---
 
-    # run_threaded_ping(ips_to_scan)
+    run_threaded_ping(ips_to_scan)
     # run_sequential_ping(ips_to_scan)
 
     # --- SCANNING FOR OPEN SSH PORTS
-    # if online_ips:
-    #     print(f"Found {len(online_ips)} IP(s)!")
-    #     run_sequential_scan(online_ips)
+    if online_ips:
+        print(f"Found {len(online_ips)} IP(s)!")
+        # run_sequential_scan(online_ips)
+        run_threaded_scan(online_ips)
