@@ -10,9 +10,10 @@ from concurrent.futures import ThreadPoolExecutor
 TARGET_PORT = 22
 TIMEOUT = 0.2
 
-BASE_IP = "172.31.201."
+BASE_IP = "172.31.204."
 # scan ips from 1-254
 ips_to_scan = [f"{BASE_IP}{i}" for i in range(1, 255)]
+online_ips = []
 
 
 # function for pinging devices
@@ -28,6 +29,7 @@ def ping_ip(ip):
 
         # returns 0 for success
         if result.returncode == 0:
+            online_ips.append(ip)
             return f"[+] ONLINE: {ip}"
         else:
             return None
@@ -80,14 +82,37 @@ def run_threaded_ping(ips):
     print(f"Threaded Scan took: {end_time - start_time:.2f} seconds")
 
 
+def run_sequential_scan(ips):
+    print("\n--- Starting Sequential Scan ---")
+    start_time = time.perf_counter()
+
+    for ip in ips:
+        result = scan_ip(ip)
+        if result:
+            print(result)
+
+    end_time = time.perf_counter()
+    print(f"Sequential Scan took: {end_time - start_time:.2f} seconds")
+
+
 if __name__ == "__main__":
+    # --- TESTING FOR KNOWN IPS ---
+
     # testing ping function
     # using PSU wifi
     # print(ping_ip("172.31.201.112"))
 
     # testing ssh scan function
     # testing vm (ssh is open) to see if the function works
-    print(scan_ip("192.168.65.133"))
+    # print(scan_ip("192.168.65.133"))
+
+
+    # --- PINGING TO GET IPS ---
 
     # run_threaded_ping(ips_to_scan)
     # run_sequential_ping(ips_to_scan)
+
+    # --- SCANNING FOR OPEN SSH PORTS
+    # if online_ips:
+    #     print(f"Found {len(online_ips)} IP(s)!")
+    #     run_sequential_scan(online_ips)
