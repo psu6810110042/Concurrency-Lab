@@ -17,6 +17,7 @@ TIMEOUT = 2
 
 online_ips = []
 
+# ผมไม่อยากโดน ban จาก wifi
 networks_to_scan = [
     # "172.30.91.0/24",
     # "172.30.90.0/24",
