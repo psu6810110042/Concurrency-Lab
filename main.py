@@ -1,9 +1,14 @@
 import subprocess
 import platform
 import time
+import socket
 
 # using threads
 from concurrent.futures import ThreadPoolExecutor
+
+
+TARGET_PORT = 22
+TIMEOUT = 0.2
 
 
 # function for pinging devices
@@ -25,6 +30,20 @@ def ping_ip(ip):
 
     except subprocess.TimeoutExpired:
         return None
+
+
+def scan_ip(ip):
+    # Create a new network socket to test ip
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(TIMEOUT)
+
+        # returns 0 for success
+        result = s.connect_ex((ip, TARGET_PORT))
+
+        if result == 0:
+            return f"[+] SUCCESS: {ip} is ONLINE and Port {TARGET_PORT} is OPEN!"
+        else:
+            return None
 
 
 # sequential ping
@@ -58,11 +77,17 @@ def run_threaded_ping(ips):
 
 
 if __name__ == "__main__":
+    # testing ping function
     # using PSU wifi
     # print(ping_ip("172.31.201.112"))
+
+    # testing ssh scan function
+    # testing vm (ssh is open) to see if the function works
+    print(scan_ip("192.168.65.133"))
+
     BASE_IP = "172.31.201."
 
     # scan ips from 1-254
     ips_to_scan = [f"{BASE_IP}{i}" for i in range(1, 255)]
-    run_threaded_ping(ips_to_scan)
+    # run_threaded_ping(ips_to_scan)
     # run_sequential_ping(ips_to_scan)
