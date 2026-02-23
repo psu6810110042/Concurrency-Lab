@@ -22,7 +22,8 @@ networks_to_scan = [
     # "172.30.91.0/24",
     # "172.30.90.0/24",
     # "172.30.89.0/24",
-    "192.168.65.0/24",
+    # "192.168.65.0/24",
+    "192.168.1.0/24"
 ]
 
 ips_to_scan = []
@@ -218,4 +219,4 @@ if __name__ == "__main__":
         run_threaded_scan(online_ips)
 
         # --- CHECK IF SSH CREDENTIALS MATCH ---
-        run_threaded_ssh_search(ips_with_ssh_open)
+        # run_threaded_ssh_search(ips_with_ssh_open)
