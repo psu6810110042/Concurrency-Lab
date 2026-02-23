@@ -2,11 +2,15 @@ import subprocess
 import platform
 import time
 import socket
+import paramiko
 import ipaddress
 
 # using threads
 from concurrent.futures import ThreadPoolExecutor
 
+
+TARGET_USER = "jirakorn"
+TARGET_PASS = "1234"
 
 TARGET_PORT = 22
 TIMEOUT = 2
@@ -14,11 +18,14 @@ TIMEOUT = 2
 online_ips = []
 
 networks_to_scan = [
-    "172.30.81.0/24",
+    # "172.30.91.0/24",
+    # "172.30.90.0/24",
+    # "172.30.89.0/24",
     "192.168.65.0/24",
 ]
 
 ips_to_scan = []
+ips_with_ssh_open = []
 
 for net_string in networks_to_scan:
     network = ipaddress.IPv4Network(net_string, strict=False)
@@ -29,6 +36,7 @@ for net_string in networks_to_scan:
 print(f"Total IPs queued for scanning: {len(ips_to_scan)}")
 
 
+# --- HELPER FUNCTIONS ---
 # function for pinging devices
 def ping_ip(ip):
     # -n for windows -c for linux and other os
@@ -61,6 +69,7 @@ def ping_ip(ip):
         return None
 
 
+# function the scan IPs for open ssh ports
 def scan_ip(ip):
     # Create a new network socket to test ip
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -70,11 +79,43 @@ def scan_ip(ip):
         result = s.connect_ex((ip, TARGET_PORT))
 
         if result == 0:
+            ips_with_ssh_open.append(ip)
             return f"[+] SUCCESS: {ip} is ONLINE and Port {TARGET_PORT} is OPEN!"
         else:
             return None
 
 
+# function to check if ssh credentials work
+def check_ssh_login(ip):
+    client = paramiko.SSHClient()
+
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    try:
+        client.connect(
+            ip,
+            port=TARGET_PORT,
+            username=TARGET_USER,
+            password=TARGET_PASS,
+            timeout=3,
+            auth_timeout=3,
+        )
+
+        stdin, stdout, stderr = client.exec_command("hostname")
+        hostname = stdout.read().decode().strip()
+
+        client.close()
+        return f"[***] FOUND IT! Successfully logged into {ip} (Hostname: {hostname})"
+
+    except paramiko.AuthenticationException:
+        return f"[-] Auth failed for {ip} (Wrong credentials)"
+    except Exception as e:
+        return f"[-] SSH failed for {ip}: {str(e)}"
+    finally:
+        client.close()
+
+
+# --- SEQUENTIAL FUNCTIONS ---
 # sequential ping
 def run_sequential_ping(ips):
     print(f"\n--- Starting Sequential Ping Scan on {len(ips)} IPs ---")
@@ -89,6 +130,21 @@ def run_sequential_ping(ips):
     print(f"Sequential Scan took: {end_time - start_time:.2f} seconds")
 
 
+# sequential scanning
+def run_sequential_scan(ips):
+    print("\n--- Starting Sequential Scan ---")
+    start_time = time.perf_counter()
+
+    for ip in ips:
+        result = scan_ip(ip)
+        if result:
+            print(result)
+
+    end_time = time.perf_counter()
+    print(f"Sequential Scan took: {end_time - start_time:.2f} seconds")
+
+
+# --- THREADING FUNCTIONS ---
 def run_threaded_ping(ips):
     print(f"\n--- Starting Threaded Ping Scan on {len(ips)} IPs ---")
     start_time = time.perf_counter()
@@ -105,19 +161,6 @@ def run_threaded_ping(ips):
     print(f"Threaded Scan took: {end_time - start_time:.2f} seconds")
 
 
-def run_sequential_scan(ips):
-    print("\n--- Starting Sequential Scan ---")
-    start_time = time.perf_counter()
-
-    for ip in ips:
-        result = scan_ip(ip)
-        if result:
-            print(result)
-
-    end_time = time.perf_counter()
-    print(f"Sequential Scan took: {end_time - start_time:.2f} seconds")
-
-
 def run_threaded_scan(ips):
     print("\n--- Starting Threaded Scan ---")
     start_time = time.perf_counter()
@@ -132,6 +175,23 @@ def run_threaded_scan(ips):
 
     end_time = time.perf_counter()
     print(f"Threaded Scan took: {end_time - start_time:.2f} seconds")
+
+
+def run_threaded_ssh_search(ips_with_open_ports):
+    print(
+        f"\n--- Starting Authenticated SSH Search on {len(ips_with_open_ports)} IPs ---"
+    )
+    start_time = time.perf_counter()
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        results = executor.map(check_ssh_login, ips_with_open_ports)
+
+        for result in results:
+            if result:
+                print(result)
+
+    end_time = time.perf_counter()
+    print(f"SSH Search took: {end_time - start_time:.2f} seconds")
 
 
 if __name__ == "__main__":
@@ -155,3 +215,6 @@ if __name__ == "__main__":
         print(f"Found {len(online_ips)} IP(s)!")
         # run_sequential_scan(online_ips)
         run_threaded_scan(online_ips)
+
+        # --- CHECK IF SSH CREDENTIALS MATCH ---
+        run_threaded_ssh_search(ips_with_ssh_open)
