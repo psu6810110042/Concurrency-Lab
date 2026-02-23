@@ -10,6 +10,10 @@ from concurrent.futures import ThreadPoolExecutor
 TARGET_PORT = 22
 TIMEOUT = 0.2
 
+BASE_IP = "172.31.201."
+# scan ips from 1-254
+ips_to_scan = [f"{BASE_IP}{i}" for i in range(1, 255)]
+
 
 # function for pinging devices
 def ping_ip(ip):
@@ -85,9 +89,5 @@ if __name__ == "__main__":
     # testing vm (ssh is open) to see if the function works
     print(scan_ip("192.168.65.133"))
 
-    BASE_IP = "172.31.201."
-
-    # scan ips from 1-254
-    ips_to_scan = [f"{BASE_IP}{i}" for i in range(1, 255)]
     # run_threaded_ping(ips_to_scan)
     # run_sequential_ping(ips_to_scan)
