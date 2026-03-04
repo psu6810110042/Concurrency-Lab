@@ -9,7 +9,7 @@ import ipaddress
 from concurrent.futures import ThreadPoolExecutor
 
 
-TARGET_USER = "jirakorn"
+TARGET_USER = "user"
 TARGET_PASS = "1234"
 
 TARGET_PORT = 22
