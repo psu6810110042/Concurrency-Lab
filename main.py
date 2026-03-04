@@ -22,8 +22,8 @@ networks_to_scan = [
     # "172.30.91.0/24",
     # "172.30.90.0/24",
     # "172.30.89.0/24",
-    # "192.168.65.0/24",
-    "192.168.1.0/24"
+    "192.168.65.0/24",
+    # "192.168.1.0/24"
 ]
 
 ips_to_scan = []
@@ -210,13 +210,13 @@ if __name__ == "__main__":
     # --- PINGING TO GET IPS ---
 
     run_threaded_ping(ips_to_scan)
-    # run_sequential_ping(ips_to_scan)
+    run_sequential_ping(ips_to_scan)
 
     # --- SCANNING FOR OPEN SSH PORTS
     if online_ips:
         print(f"Found {len(online_ips)} IP(s)!")
-        # run_sequential_scan(online_ips)
+        run_sequential_scan(online_ips)
         run_threaded_scan(online_ips)
 
         # --- CHECK IF SSH CREDENTIALS MATCH ---
-        # run_threaded_ssh_search(ips_with_ssh_open)
+        run_threaded_ssh_search(ips_with_ssh_open)
